@@ -71,11 +71,12 @@ class Dm4Converter(tk.Frame):
         close_button = Button(confirm_frame, text='Close', command=root.destroy)
         close_button.pack(side=RIGHT, padx=5, pady=5)
         
+        # Create preview image row
         preview_frame = Frame(self)
         preview_frame.pack()
 
-        view_label = Label(preview_frame, text='Preview')
-        view_label.pack(anchor=W)
+        view_button = Button(preview_frame, text='Preview', command=self.preview_change)
+        view_button.pack(anchor=W, pady=5)
 
         pic_frame = Frame(preview_frame, height=256, width=256, relief=SUNKEN, borderwidth=1)
         pic_frame.pack_propagate(0)
