@@ -24,6 +24,9 @@ class Dm4Converter(tk.Frame):
         
         self.create()
         
+        self.update_status(0)
+        self.preview_change()
+        
     def create(self):
         # Source folder select row
         in_frame = Frame(self)
@@ -85,11 +88,8 @@ class Dm4Converter(tk.Frame):
         img_label = Label(pic_frame)
         img_label.pack(fill=BOTH, expand=1)
         self.preview_image = img_label
-        
-        self.update_status(0)
     
-    def update_status(self, processed, *args):
-        print args
+    def update_status(self, processed):
         dm4_file_count = len(self.get_dm4_filenames())
         
         self.status_string.set('' + str(processed) + ' of ' + str(dm4_file_count) + ' files processed')
@@ -104,28 +104,33 @@ class Dm4Converter(tk.Frame):
         return dm4_filenames
     
     # Update the preview image
-    def preview_change(self, *args):
+    def preview_change(self):
         src_folder = self.src_string.get()
         if self.brightness.get():
             dm4_filenames = self.get_dm4_filenames()
-            src_fullpath = os.path.join(src_folder, dm4_filenames[0])
-            
-            dm4_file = dm4reader.DM4File.open(src_fullpath)
-            dm4_tags = dm4_file.read_directory()
-            data_tag = dm4_tags.named_subdirs['ImageList'].unnamed_subdirs[1].named_subdirs['ImageData'].named_tags['Data']
-            np_array = np.array(dm4_file.read_tag_data(data_tag), dtype=np.uint16)
-            np_array = np.reshape(np_array, Dm4Converter.read_image_shape(dm4_file, dm4_tags))
-            
-            # ImageTk doesn't seem to handle 16bit greyscale so by brightness value and then
-            # rescale to 8 bit values.
-            grey_array = np_array * self.brightness.get() / 256
-            
-            image = Image.fromarray(grey_array, 'I;16')
-            image = image.resize((256, 256))
-            tk_preview = ImageTk.PhotoImage(image)
-            
-            self.preview_image.configure(image=tk_preview)
-            self.preview_image.image = tk_preview
+            if len(dm4_filenames):
+                dm4_fullpath = os.path.join(src_folder, dm4_filenames[0])
+                
+                dm4_file = dm4reader.DM4File.open(dm4_fullpath)
+                dm4_tags = dm4_file.read_directory()
+                data_tag = dm4_tags.named_subdirs['ImageList'].unnamed_subdirs[1].named_subdirs['ImageData'].named_tags['Data']
+                np_array = np.array(dm4_file.read_tag_data(data_tag), dtype=np.uint16)
+                np_array = np.reshape(np_array, Dm4Converter.read_image_shape(dm4_file, dm4_tags))
+                
+                # ImageTk doesn't seem to handle 16bit greyscale so by brightness value and then
+                # rescale to 8 bit values.
+                grey_array = np_array * self.brightness.get() / 256
+                
+                image = Image.fromarray(grey_array, 'I;16')
+                image = image.resize((256, 256))
+                
+                tk_preview = ImageTk.PhotoImage(image)
+                
+                self.preview_image.configure(image=tk_preview)
+                self.preview_image.image = tk_preview
+            else:
+                self.preview_image.configure(image=None)
+                self.preview_image.image = None
         
         
     
@@ -149,19 +154,20 @@ class Dm4Converter(tk.Frame):
     def convert(self):
         dm4_filenames = self.get_dm4_filenames()
         
+        src_folder = self.src_string.get()
         output_dir = self.output_string.get()
         
         files_processed = 0
         
         for filename in dm4_filenames:
-            src_fullpath = os.path.join(src_folder, filename)
+            dm4_fullpath = os.path.join(src_folder, filename)
             
             file_basename = os.path.basename(filename)
             output_filename = os.path.basename(file_basename + '.tif')
         
             output_path = os.path.join(output_dir, output_filename)
             
-            dm4_file = dm4reader.DM4File.open(src_fullpath)
+            dm4_file = dm4reader.DM4File.open(dm4_fullpath)
             dm4_tags = dm4_file.read_directory()
             data_tag = dm4_tags.named_subdirs['ImageList'].unnamed_subdirs[1].named_subdirs['ImageData'].named_tags['Data']
             np_array = np.array(dm4_file.read_tag_data(data_tag), dtype=np.uint16)
@@ -171,8 +177,10 @@ class Dm4Converter(tk.Frame):
             
             image = Image.fromarray(grey_array, 'I;16')
             image.save(output_path)
-          
+            
+            files_processed += 1
             self.update_status(files_processed)
+            
             dm4_file.close()
 
 if __name__ == '__main__':
