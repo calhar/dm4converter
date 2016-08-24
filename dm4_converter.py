@@ -16,10 +16,10 @@ class Dm4Converter(tk.Frame):
         self.src_string.set('C:\\Source')
         self.output_string = StringVar()
         self.output_string.set('C:\\Temp')
+        self.status_string = StringVar()
         self.brightness = IntVar()
         self.brightness.set(10)
-        self.src_string.trace('w', self.preview_change)
-        self.brightness.trace('w', self.preview_change)
+        self.src_string.trace('w', lambda *args: self.update_status(0))
         self.preview_image = None
         
         self.create()
@@ -61,6 +61,8 @@ class Dm4Converter(tk.Frame):
         # Confirm/Cancel row
         confirm_frame = Frame(self)
         confirm_frame.pack(fill=X)
+        status_label = Label(confirm_frame, textvariable=self.status_string, width=20)
+        status_label.pack(side=LEFT, padx=5, pady=5)
         ok_button = Button(confirm_frame,
                            text='OK',
                            command=self.convert)
@@ -169,6 +171,7 @@ class Dm4Converter(tk.Frame):
             image = Image.fromarray(grey_array, 'I;16')
             image.save(output_path)
           
+            self.update_status(files_processed)
             dm4_file.close()
 
 if __name__ == '__main__':
