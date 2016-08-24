@@ -82,13 +82,30 @@ class Dm4Converter(tk.Frame):
         img_label = Label(pic_frame)
         img_label.pack(fill=BOTH, expand=1)
         self.preview_image = img_label
+        
+        self.update_status(0)
     
+    def update_status(self, processed, *args):
+        print args
+        dm4_file_count = len(self.get_dm4_filenames())
+        
+        self.status_string.set('' + str(processed) + ' of ' + str(dm4_file_count) + ' files processed')
+    
+    def get_dm4_filenames(self):
+        src_folder = self.src_string.get()
+        src_filenames = [f for f in os.listdir(src_folder) 
+                if os.path.isfile(os.path.join(src_folder, f))]
+        dm4_filenames = [f for f in src_filenames
+                if os.path.splitext(f)[1] == '.dm4']
+                
+        return dm4_filenames
+    
+    # Update the preview image
     def preview_change(self, *args):
+        src_folder = self.src_string.get()
         if self.brightness.get():
-            src_folder = self.src_string.get()
-            src_filenames = [f for f in os.listdir(src_folder) 
-                    if os.path.isfile(os.path.join(src_folder, f))]
-            src_fullpath = os.path.join(src_folder, src_filenames[0])
+            dm4_filenames = self.get_dm4_filenames()
+            src_fullpath = os.path.join(src_folder, dm4_filenames[0])
             
             dm4_file = dm4reader.DM4File.open(src_fullpath)
             dm4_tags = dm4_file.read_directory()
@@ -96,6 +113,8 @@ class Dm4Converter(tk.Frame):
             np_array = np.array(dm4_file.read_tag_data(data_tag), dtype=np.uint16)
             np_array = np.reshape(np_array, Dm4Converter.read_image_shape(dm4_file, dm4_tags))
             
+            # ImageTk doesn't seem to handle 16bit greyscale so by brightness value and then
+            # rescale to 8 bit values.
             grey_array = np_array * self.brightness.get() / 256
             
             image = Image.fromarray(grey_array, 'I;16')
@@ -125,12 +144,13 @@ class Dm4Converter(tk.Frame):
         return (YDim, XDim)
         
     def convert(self):
-        src_folder = self.src_string.get()
-        src_filenames = [f for f in os.listdir(src_folder) 
-                if os.path.isfile(os.path.join(src_folder, f))]
+        dm4_filenames = self.get_dm4_filenames()
         
         output_dir = self.output_string.get()
-        for filename in src_filenames:
+        
+        files_processed = 0
+        
+        for filename in dm4_filenames:
             src_fullpath = os.path.join(src_folder, filename)
             
             file_basename = os.path.basename(filename)
